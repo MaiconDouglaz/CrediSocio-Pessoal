@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Clientes - Premium</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        :root {
+            --primaria: #2E8B57;
+            --primaria-hover: #3CB371;
+            --preto-deep: #0F172A;
+            --cinza-texto: #64748B;
+            --branco: #FFFFFF;
+            --fundo-gradiente: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+            --vermelho: #EF4444;
+            --azul-edit: #3B82F6;
+        }
+
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--fundo-gradiente); color: var(--preto-deep); display: flex; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 400px; padding: 24px; box-sizing: border-box; }
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 25px; }
+        
+        .btn-voltar { background: var(--branco); border: none; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        h2 { font-size: 1.3rem; margin: 0; font-weight: 700; }
+        
+        .busca-container { background: var(--branco); padding: 12px 16px; border-radius: 16px; display: flex; align-items: center; gap: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); margin-bottom: 25px; }
+        .busca-container input { border: none; outline: none; width: 100%; font-size: 1rem; color: var(--preto-deep); }
+        
+        .lista-clientes { display: flex; flex-direction: column; gap: 12px; }
+        .card-cliente { background: var(--branco); padding: 16px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); cursor: pointer; transition: transform 0.2s; }
+        .card-cliente:active { transform: scale(0.98); }
+
+        .info-principal { display: flex; align-items: center; gap: 15px; flex: 1; }
+        .avatar { width: 45px; height: 45px; background: #f1f5f9; color: var(--primaria); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+        .detalhes b { display: block; font-size: 1rem; margin-bottom: 2px; }
+        .detalhes span { font-size: 0.8rem; color: var(--cinza-texto); }
+
+        .acoes { display: flex; align-items: center; gap: 8px; }
+        .btn-acao { border: none; width: 35px; height: 35px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .btn-excluir { background: #FEE2E2; color: var(--vermelho); }
+        .btn-editar { background: #DBEAFE; color: var(--azul-edit); }
+
+        /* Modal de Edição Atualizado */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; padding: 20px; box-sizing: border-box; }
+        .modal-content { background: var(--branco); width: 100%; max-width: 350px; padding: 24px; border-radius: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .modal-content h3 { margin: 0 0 15px 0; font-size: 1.2rem; }
+        .modal-content label { font-size: 0.75rem; font-weight: bold; color: var(--cinza-texto); text-transform: uppercase; margin-left: 5px; }
+        .modal-content input { width: 100%; padding: 12px; margin: 5px 0 15px 0; border: 1px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; font-size: 0.9rem; }
+        .modal-btn-group { display: flex; gap: 10px; margin-top: 5px; }
+        .btn-confirmar { flex: 1; background: var(--primaria); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+        .btn-cancelar { flex: 1; background: #E2E8F0; color: var(--preto-deep); border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <button class="btn-voltar" onclick="window.location.href='Cadastros.html'">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <h2>Meus Clientes</h2>
+        </header>
+
+        <div class="busca-container">
+            <i data-lucide="search" size="20"></i>
+            <input type="text" id="inputBusca" placeholder="Buscar cliente por nome..." onkeyup="filtrarClientes()">
+        </div>
+
+        <div class="lista-clientes" id="listaClientes"></div>
+    </div>
+
+    <div id="modalEditar" class="modal">
+        <div class="modal-content">
+            <h3>Editar Dados</h3>
+            
+            <label>Nome Completo</label>
+            <input type="text" id="editNome">
+            
+            <label>Celular/WhatsApp</label>
+            <input type="tel" id="editCelular">
+            
+            <label>E-mail</label>
+            <input type="email" id="editEmail">
+            
+            <label>Endereço</label>
+            <input type="text" id="editEndereco">
+
+            <div class="modal-btn-group">
+                <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
+                <button class="btn-confirmar" onclick="salvarEdicao()">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="banco.js"></script>
+    <script>
+        lucide.createIcons();
+        let nomeOriginalParaBusca = null;
+
+        function carregarClientes() {
+            const container = document.getElementById('listaClientes');
+            container.innerHTML = "";
+            const dados = Banco.getDados();
+            const clientes = dados.clientes;
+
+            if (!clientes || clientes.length === 0) {
+                container.innerHTML = "<p style='text-align:center; color:var(--cinza-texto);'>Nenhum cliente cadastrado.</p>";
+                return;
+            }
+
+            clientes.forEach((cliente) => {
+                const inicial = cliente.nome.charAt(0).toUpperCase();
+                const card = document.createElement('div');
+                card.className = 'card-cliente';
+                card.onclick = () => verDetalhes(cliente.nome);
+
+                card.innerHTML = `
+                    <div class="info-principal">
+                        <div class="avatar">${inicial}</div>
+                        <div class="detalhes">
+                            <b>${cliente.nome}</b>
+                            <span>${cliente.celular || 'Sem telefone'}</span>
+                        </div>
+                    </div>
+                    <div class="acoes">
+                        <button class="btn-acao btn-editar" onclick="abrirEdicao(event, ${JSON.stringify(cliente).replace(/"/g, '&quot;')})">
+                            <i data-lucide="pencil" size="18"></i>
+                        </button>
+                        <button class="btn-acao btn-excluir" onclick="confirmarExclusao(event, '${cliente.nome}')">
+                            <i data-lucide="trash-2" size="18"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        function abrirEdicao(event, cliente) {
+            event.stopPropagation();
+            nomeOriginalParaBusca = cliente.nome; // Armazena para localizar no array depois
+            
+            document.getElementById('editNome').value = cliente.nome || "";
+            document.getElementById('editCelular').value = cliente.celular || "";
+            document.getElementById('editEmail').value = cliente.email || "";
+            document.getElementById('editEndereco').value = cliente.endereco || "";
+            
+            document.getElementById('modalEditar').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalEditar').style.display = 'none';
+        }
+
+        function salvarEdicao() {
+            const novoNome = document.getElementById('editNome').value.trim();
+            const novoCelular = document.getElementById('editCelular').value.trim();
+            const novoEmail = document.getElementById('editEmail').value.trim();
+            const novoEndereco = document.getElementById('editEndereco').value.trim();
+
+            if (!novoNome) { alert("O nome é obrigatório!"); return; }
+
+            let dados = Banco.getDados();
+            let cliente = dados.clientes.find(c => c.nome === nomeOriginalParaBusca);
+
+            if (cliente) {
+                cliente.nome = novoNome;
+                cliente.celular = novoCelular;
+                cliente.email = novoEmail;
+                cliente.endereco = novoEndereco;
+                
+                Banco.salvarDados(dados);
+                fecharModal();
+                carregarClientes();
+            }
+        }
+
+        function confirmarExclusao(event, nomeCliente) {
+            event.stopPropagation();
+            if (confirm(`Excluir "${nomeCliente}"?`)) {
+                let dados = Banco.getDados();
+                dados.clientes = dados.clientes.filter(c => c.nome !== nomeCliente);
+                Banco.salvarDados(dados);
+                carregarClientes();
+            }
+        }
+
+        function filtrarClientes() {
+            const busca = document.getElementById('inputBusca').value.toLowerCase();
+            const cards = document.getElementsByClassName('card-cliente');
+            for (let i = 0; i < cards.length; i++) {
+                let nome = cards[i].querySelector('.detalhes b').innerText.toLowerCase();
+                cards[i].style.display = nome.includes(busca) ? "flex" : "none";
+            }
+        }
+
+        function verDetalhes(nome) {
+            window.location.href = 'detalc.html?cliente=' + encodeURIComponent(nome);
+        }
+
+        carregarClientes();
+    </script>
+</body>
+</html>

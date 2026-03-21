@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nova Dívida - Premium</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root { --primaria: #2E8B57; --primaria-clara: #E8F5E9; --preto-deep: #0F172A; --cinza-texto: #64748B; --cinza-claro: #94A3B8; --branco: #FFFFFF; --fundo-gradiente: #F4F6F8; }
+        body { margin: 0; padding: 20px; font-family: 'Inter', sans-serif; background: var(--fundo-gradiente); color: var(--preto-deep); }
+        .container { max-width: 400px; margin: 0 auto; padding-bottom: 40px; }
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+        .btn-voltar { background: var(--branco); border: none; width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgb(0 0 0 / 0.05); cursor: pointer; }
+        .cliente-badge { background-color: var(--primaria-clara); color: var(--primaria); border: 1px solid #C8E6C9; padding: 10px 16px; border-radius: 8px; display: inline-flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; margin-bottom: 24px; }
+        .input-card { background: var(--branco); padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; border: 1px solid transparent; }
+        label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--cinza-texto); margin-bottom: 6px; text-transform: uppercase; }
+        .input-wrapper { display: flex; align-items: center; gap: 10px; }
+        input, select { border: none; outline: none; font-size: 1rem; width: 100%; background: transparent; color: var(--preto-deep); }
+        .card-total { background: var(--preto-deep); color: var(--branco); padding: 24px; border-radius: 16px; text-align: center; margin: 24px 0; }
+        .btn-salvar { width: 100%; background: var(--primaria); color: white; border: none; padding: 16px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <button class="btn-voltar" onclick="window.history.back()"><i data-lucide="chevron-left"></i></button>
+            <h2>Nova Dívida</h2>
+        </header>
+
+        <div class="cliente-badge">
+            <i data-lucide="user" size="18"></i>
+            <span id="nome-cliente-exibicao">Cliente: Não Identificado</span>
+        </div>
+
+        <div class="input-card"><label>TÍTULO</label><div class="input-wrapper"><i data-lucide="tag"></i><input type="text" id="titulo" placeholder="Ex: Reforma Cozinha"></div></div>
+        <div class="input-card"><label>VALOR EMPRESTADO</label><div class="input-wrapper"><i data-lucide="credit-card"></i><input type="number" id="valorEmprestado" step="0.01" placeholder="0.00"></div></div>
+        <div class="input-card"><label>FREQUÊNCIA</label><div class="input-wrapper"><i data-lucide="calendar-clock"></i><select id="frequencia"><option value="Diário">Diário</option><option value="Semanal">Semanal</option><option value="Mensal" selected>Mensal</option></select></div></div>
+        <div class="input-card"><label>1º VENCIMENTO</label><div class="input-wrapper"><i data-lucide="calendar"></i><input type="date" id="dataVencimento"></div></div>
+        <div class="input-card"><label>QTD PARCELAS</label><div class="input-wrapper"><i data-lucide="hash"></i><input type="number" id="parcelas" placeholder="Ex: 3"></div></div>
+        <div class="input-card"><label>VALOR DA PARCELA</label><div class="input-wrapper"><i data-lucide="coins"></i><input type="number" id="valorParcela" step="0.01" placeholder="0.00"></div></div>
+        <div class="input-card"><label>VALOR DE QUITAÇÃO</label><div class="input-wrapper"><i data-lucide="piggy-bank"></i><input type="number" id="valorQuitacao" step="0.01" placeholder="0.00"></div></div>
+
+        <div class="card-total">
+            <span>TOTAL DA DÍVIDA</span>
+            <h3 id="total-receber">R$ 0,00</h3>
+        </div>
+
+        <button class="btn-salvar" onclick="processarCadastro()">Salvar Dívida</button>
+    </div>
+
+    <script src="banco.js"></script>
+    <script>
+        lucide.createIcons();
+        const urlParams = new URLSearchParams(window.location.search);
+        const nomeCliente = urlParams.get('cliente');
+        document.getElementById('nome-cliente-exibicao').innerText = "Cliente: " + (nomeCliente || "Não identificado");
+
+        function calcularTotal() {
+            const qtd = parseInt(document.getElementById('parcelas').value) || 0;
+            const valP = parseFloat(document.getElementById('valorParcela').value) || 0;
+            const valQ = parseFloat(document.getElementById('valorQuitacao').value) || 0;
+            const total = (qtd * valP) + valQ;
+            document.getElementById('total-receber').innerText = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            return total;
+        }
+
+        document.getElementById('parcelas').addEventListener('input', calcularTotal);
+        document.getElementById('valorParcela').addEventListener('input', calcularTotal);
+        document.getElementById('valorQuitacao').addEventListener('input', calcularTotal);
+
+        function processarCadastro() {
+            const titulo = document.getElementById('titulo').value;
+            const valorEmprestado = parseFloat(document.getElementById('valorEmprestado').value) || 0;
+            const totalParcelas = parseInt(document.getElementById('parcelas').value);
+            const valorParcelaBase = parseFloat(document.getElementById('valorParcela').value);
+            const valorQuitacao = parseFloat(document.getElementById('valorQuitacao').value) || 0;
+            const dataVencStr = document.getElementById('dataVencimento').value;
+
+            if (!titulo || isNaN(totalParcelas) || isNaN(valorParcelaBase) || !dataVencStr) {
+                alert("Preencha todos os campos obrigatórios!");
+                return;
+            }
+
+            // --- LÓGICA DE GERAÇÃO DE PARCELAS ---
+            const parcelasGeradas = [];
+            let dataVencimentoOriginal = new Date(dataVencStr + 'T12:00:00');
+            const frequencia = document.getElementById('frequencia').value;
+
+            for (let i = 1; i <= totalParcelas; i++) {
+                let valorDestaParcela = valorParcelaBase;
+                
+                // Se for a última parcela, soma o valor de quitação
+                if (i === totalParcelas) {
+                    valorDestaParcela += valorQuitacao;
+                }
+
+                // Cálculo da data para cada parcela baseada na frequência
+                let dataParcela = new Date(dataVencimentoOriginal);
+                if (frequencia === 'Mensal') dataParcela.setMonth(dataParcela.getMonth() + (i - 1));
+                else if (frequencia === 'Semanal') dataParcela.setDate(dataParcela.getDate() + ((i - 1) * 7));
+                else if (frequencia === 'Diário') dataParcela.setDate(dataParcela.getDate() + (i - 1));
+
+                parcelasGeradas.push({
+                    numero: i,
+                    valor: valorDestaParcela.toFixed(2),
+                    vencimento: dataParcela.toLocaleDateString('pt-BR'),
+                    pago: 0,
+                    status: "PENDENTE"
+                });
+            }
+
+            const novaDivida = {
+                titulo: titulo.toUpperCase(),
+                valorEmprestado: valorEmprestado,
+                valorTotal: (totalParcelas * valorParcelaBase) + valorQuitacao,
+                totalParcelas: totalParcelas,
+                valorParcela: valorParcelaBase, // Mantém o valor base para referência
+                valorQuitacao: valorQuitacao,
+                frequencia: frequencia,
+                dataVencimento: dataVencStr.split('-').reverse().join('/'),
+                data: new Date().toLocaleDateString('pt-BR'),
+                parcelas: parcelasGeradas // AQUI ESTÁ A CHAVE DA CORREÇÃO
+            };
+
+            if (Banco.salvarNovaDivida(nomeCliente, novaDivida)) {
+                // Redireciona para o Perfil Financeiro para ver o card corrigido
+                window.location.href = `detalc.html?cliente=${encodeURIComponent(nomeCliente)}`;
+            } else {
+                alert("Erro ao salvar dívida.");
+            }
+        }
+    </script>
+</body>
+</html>

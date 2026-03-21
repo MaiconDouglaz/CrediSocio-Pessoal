@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Controle de Empréstimos</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        :root {
+            --primaria: #2E8B57;
+            --primaria-hover: #246B43;
+            --preto-deep: #0F172A;
+            --cinza-fundo: #F8FAFC;
+            --cinza-texto: #64748B;
+            --cinza-borda: #E2E8F0;
+            --branco: #FFFFFF;
+            --verde-lucro: #10B981;
+            --vermelho-alerta: #EF4444;
+            --azul-info: #3B82F6;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--cinza-fundo);
+            color: var(--preto-deep);
+            padding-bottom: 100px; 
+        }
+
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; }
+
+        /* Cabeçalho */
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .boas-vindas h1 { margin: 0; font-size: 1.4rem; color: var(--preto-deep); }
+        .boas-vindas p { margin: 4px 0 0 0; font-size: 0.85rem; color: var(--cinza-texto); }
+
+        /* Filtros de Tempo */
+        .filtros-tempo { display: flex; background: var(--branco); padding: 4px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .btn-filtro { flex: 1; border: none; background: transparent; padding: 8px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: var(--cinza-texto); cursor: pointer; transition: all 0.2s; }
+        .btn-filtro.ativo { background: var(--preto-deep); color: var(--branco); }
+
+        /* Grid de Resumo Financeiro */
+        .grid-resumo { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 30px; }
+        .card-resumo { background: var(--branco); padding: 16px; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: all 0.3s ease; }
+        .card-resumo.destaque { background: var(--preto-deep); color: var(--branco); }
+        .card-resumo.destaque .valor { color: var(--verde-lucro); }
+        .card-resumo.destaque p { color: #94A3B8; }
+        .card-resumo p { margin: 0; font-size: 0.7rem; text-transform: uppercase; font-weight: 700; color: var(--cinza-texto); margin-bottom: 8px; }
+        .card-resumo .valor { margin: 0; font-size: 1rem; font-weight: 800; }
+        
+        /* Seção Próximos Vencimentos */
+        .secao-titulo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .secao-titulo h2 { margin: 0; font-size: 1rem; }
+        .secao-titulo span { font-size: 0.8rem; color: var(--cinza-texto); display: flex; align-items: center; gap: 4px; }
+
+        .carrossel-vencimentos { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; scroll-snap-type: x mandatory; -ms-overflow-style: none; scrollbar-width: none; }
+        .carrossel-vencimentos::-webkit-scrollbar { display: none; }
+        .card-vencimento { min-width: 220px; background: #f1f5f9; padding: 16px; border-radius: 16px; border-left: 4px solid var(--laranja-pendente); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); scroll-snap-align: start; cursor: pointer; text-decoration: none; color: inherit; }
+        .card-vencimento.atrasado { border-left-color: var(--vermelho-alerta); background: #FeF1F1; }
+        .venc-data { font-size: 0.7rem; color: var(--cinza-texto); font-weight: 700; display: block; margin-bottom: 4px; }
+        .texto-vencido { color: var(--vermelho-alerta); font-weight: 800; margin-left: 4px; } 
+        .venc-nome { font-size: 0.8rem; font-weight: 800; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .venc-footer { display: flex; justify-content: space-between; align-items: flex-end; }
+        .venc-valor { font-size: 1rem; font-weight: 800; color: var(--preto-deep); }
+        .venc-parcela { font-size: 0.7rem; background: var(--cinza-fundo); padding: 4px 8px; border-radius: 6px; font-weight: 600; }
+
+        /* Barra de Navegação */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--branco); display: flex; justify-content: space-around; padding: 12px 0 8px 0; box-shadow: 0 -4px 15px rgba(0,0,0,0.05); z-index: 50; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--cinza-texto); text-decoration: none; font-size: 0.65rem; font-weight: 600; cursor: pointer; flex: 1; }
+        .nav-item.ativo { color: var(--primaria); }
+        .btn-add-center { position: relative; top: -20px; }
+        .circulo-add { background: var(--primaria); border-radius: 50%; width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(46, 139, 87, 0.4); margin-bottom: 4px; transition: transform 0.2s; }
+        .btn-add-center:active .circulo-add { transform: scale(0.95); }
+        .btn-add-center span { color: var(--primaria); font-weight: 800; }
+
+        /* Modais */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 100; }
+        .modal { background: var(--branco); width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 24px; box-sizing: border-box; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h3 { margin: 0; font-size: 1.2rem; }
+        .btn-fechar { background: none; border: none; cursor: pointer; color: var(--cinza-texto); }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--cinza-texto); margin-bottom: 8px; }
+        .form-group select { width: 100%; padding: 12px; border: 1px solid var(--cinza-borda); border-radius: 12px; font-size: 1rem; outline: none; background: white; }
+        .btn-acao-modal { width: 100%; background: var(--preto-deep); color: var(--branco); border: none; padding: 16px; border-radius: 12px; font-weight: 700; font-size: 1rem; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 10px; }
+        .btn-acao-modal:hover { background: #1e293b; }
+        .btn-whats { background: #25D366; }
+        .btn-whats:hover { background: #128C7E; }
+
+        /* --- ESTILOS PROFISSIONAIS DE IMPRESSÃO (Igual às fotos) --- */
+        #area-impressao { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            body { background: white; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+            #area-impressao, #area-impressao * { visibility: visible; }
+            #area-impressao { display: block; position: absolute; left: 0; top: 0; width: 100%; padding: 0; }
+            
+            /* Força as cores de fundo na impressão */
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+            .print-header-azul { background-color: #002060 !important; color: white !important; padding: 12px; text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 0; }
+            .print-header-verde { background-color: #00B050 !important; color: white !important; padding: 12px; text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 0; }
+            .print-header-preto { background-color: #000000 !important; color: white !important; padding: 12px; text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 0; }
+            
+            .print-subtotais { display: flex; border-bottom: 2px solid #fff; }
+            .print-sub-box { flex: 1; background-color: #808080 !important; color: white !important; padding: 10px; text-align: center; border-right: 2px solid #fff; }
+            .print-sub-box:last-child { border-right: none; }
+            .print-sub-box div { font-size: 12px; margin-bottom: 4px; }
+            .print-sub-box span { font-size: 16px; font-weight: bold; }
+
+            .print-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .print-table th, .print-table td { border-bottom: 1px solid #ddd; padding: 8px; font-size: 12px; }
+            .print-table th { background-color: #F2F2F2 !important; font-weight: bold; text-align: center; }
+            .print-table td.col-desc { font-weight: bold; text-align: left; }
+            .print-table td.col-valor { text-align: center; }
+            .print-table tr:nth-child(even) { background-color: #FAFAFA !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="boas-vindas">
+                <h1>Painel de Controle</h1>
+                <p>Resumo das suas operações</p>
+            </div>
+        </header>
+
+        <div class="filtros-tempo">
+            <button class="btn-filtro ativo" onclick="aplicarFiltro('mes', this)">Este Mês</button>
+            <button class="btn-filtro" onclick="aplicarFiltro('semana', this)">Esta Semana</button>
+            <button class="btn-filtro" onclick="aplicarFiltro('dia', this)">Hoje</button>
+            <button class="btn-filtro" onclick="aplicarFiltro('tudo', this)">Total</button>
+        </div>
+
+        <div class="grid-resumo">
+            <div class="card-resumo" id="card-emprestado" style="display: none;">
+                <p>Total Emprestado</p>
+                <h3 class="valor" id="resumo-emprestado">R$ 0,00</h3>
+            </div>
+            
+            <div class="card-resumo" id="card-areceber">
+                <p id="label-areceber">A Receber (Mês)</p>
+                <h3 class="valor" id="resumo-areceber">R$ 0,00</h3>
+            </div>
+            
+            <div class="card-resumo" id="card-recebido">
+                <p id="label-recebido">Recebido (Mês)</p>
+                <h3 class="valor" id="resumo-recebido" style="color: var(--primaria);">R$ 0,00</h3>
+            </div>
+            
+            <div class="card-resumo destaque" id="card-lucro" style="display: none;">
+                <p>Lucro dos Contratos</p>
+                <h3 class="valor" id="resumo-lucro">R$ 0,00</h3>
+            </div>
+        </div>
+
+        <div class="secao-titulo">
+            <h2>Próximos Vencimentos</h2>
+            <span><i data-lucide="chevron-right" size="16"></i> Deslize</span>
+        </div>
+        
+        <div class="carrossel-vencimentos" id="container-vencimentos">
+            <p style="font-size: 0.8rem; color: #64748B;">Carregando...</p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-item ativo"><i data-lucide="layout-dashboard"></i>Início</a>
+        <a href="Cadastros.html" class="nav-item"><i data-lucide="wallet"></i>Carteira</a>
+        
+        <div class="nav-item btn-add-center" onclick="abrirModalAdicionar()">
+            <div class="circulo-add">
+                <i data-lucide="plus" color="#FFFFFF" size="28"></i>
+            </div>
+            <span>Ações</span>
+        </div>
+
+        <a href="Agenda.html" class="nav-item"><i data-lucide="calendar"></i>Agenda</a>
+        <div class="nav-item" onclick="abrirModalRelatorio()"><i data-lucide="file-text"></i>Relatórios</div>
+    </nav>
+
+    <div class="overlay" id="modalAdicionar" onclick="fecharModalAdicionar()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>O que deseja fazer?</h3>
+                <button class="btn-fechar" onclick="fecharModalAdicionar()"><i data-lucide="x"></i></button>
+            </div>
+            <div id="opcoes-adicionar">
+                <button class="btn-acao-modal" style="background: var(--cinza-fundo); color: var(--preto-deep); border: 1px solid var(--cinza-borda);" onclick="window.location.href='Cadastro_form.html'"><i data-lucide="user-plus"></i> Novo Cliente</button>
+                <button class="btn-acao-modal" style="background: var(--cinza-fundo); color: var(--preto-deep); border: 1px solid var(--cinza-borda);" onclick="window.location.href='Lista_clientes.html'"><i data-lucide="users"></i> Lista de Clientes</button>
+                <button class="btn-acao-modal" style="background: var(--primaria); margin-top: 16px;" onclick="mostrarSelectNovaDivida()"><i data-lucide="file-plus"></i> Nova Dívida</button>
+            </div>
+            <div id="selecao-cliente-divida" style="display: none;">
+                <p style="font-size: 0.9rem; color: var(--cinza-texto); margin-top: 0;">Para qual cliente deseja adicionar a dívida?</p>
+                <div class="form-group">
+                    <select id="select-cliente-nova-divida"><option value="">Carregando...</option></select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-acao-modal" style="background: var(--cinza-borda); color: var(--preto-deep); flex: 1;" onclick="voltarOpcoesAdicionar()">Voltar</button>
+                    <button class="btn-acao-modal" style="background: var(--primaria); flex: 2;" onclick="irParaNovaDivida()">Continuar <i data-lucide="arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="modalRelatorio" onclick="fecharModalRelatorio()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>Emitir Relatório</h3>
+                <button class="btn-fechar" onclick="fecharModalRelatorio()"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="form-group">
+                <label>Período de Análise</label>
+                <select id="rel-periodo">
+                    <option value="mes">Mês Atual</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="dia">Hoje</option>
+                    <option value="tudo">Todo o Período</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Escopo do Relatório</label>
+                <select id="rel-escopo" onchange="ajustarCamposRelatorio()">
+                    <option value="geral">Geral (Todos os Clientes)</option>
+                    <option value="cliente">Apenas de um Cliente</option>
+                    <option value="divida">De uma Dívida Específica</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-rel-cliente" style="display: none;">
+                <label>Selecione o Cliente</label>
+                <select id="rel-cliente" onchange="carregarDividasDoClienteRelatorio()">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="grupo-rel-divida" style="display: none;">
+                <label>Selecione a Dívida</label>
+                <select id="rel-divida">
+                    <option value="">Aguardando cliente...</option>
+                </select>
+            </div>
+
+            <button class="btn-acao-modal" onclick="acionarRelatorio('print')"><i data-lucide="printer"></i> Imprimir / Salvar PDF</button>
+            <button class="btn-acao-modal btn-whats" onclick="acionarRelatorio('whatsapp')"><i data-lucide="send"></i> Enviar Resumo no WhatsApp</button>
+        </div>
+    </div>
+
+    <div id="area-impressao"></div>
+
+    <script src="banco.js"></script>
+    <script>
+        let filtroAtual = 'mes';
+        let dadosGerais = null;
+
+        function iniciarDashboard() {
+            dadosGerais = Banco.getDados();
+            carregarResumo(filtroAtual);
+            carregarProximosVencimentos();
+            lucide.createIcons();
+        }
+
+        // --- SISTEMA BOTÃO AÇÕES ---
+        function abrirModalAdicionar() { document.getElementById('modalAdicionar').style.display = 'flex'; voltarOpcoesAdicionar(); popularSelectsClientes(); }
+        function fecharModalAdicionar() { document.getElementById('modalAdicionar').style.display = 'none'; }
+        function mostrarSelectNovaDivida() { document.getElementById('opcoes-adicionar').style.display = 'none'; document.getElementById('selecao-cliente-divida').style.display = 'block'; }
+        function voltarOpcoesAdicionar() { document.getElementById('opcoes-adicionar').style.display = 'block'; document.getElementById('selecao-cliente-divida').style.display = 'none'; }
+        function irParaNovaDivida() {
+            const cli = document.getElementById('select-cliente-nova-divida').value;
+            if (!cli) return alert("Selecione um cliente.");
+            window.location.href = `novadiv.html?cliente=${encodeURIComponent(cli)}`;
+        }
+
+        // Popula os selects das modais
+        function popularSelectsClientes() {
+            if (!dadosGerais) dadosGerais = Banco.getDados();
+            const options = '<option value="">Selecione...</option>' + 
+                (dadosGerais.clientes || []).sort((a,b) => a.nome.localeCompare(b.nome))
+                .map(c => `<option value="${c.nome}">${c.nome}</option>`).join('');
+            
+            const selAdd = document.getElementById('select-cliente-nova-divida');
+            const selRel = document.getElementById('rel-cliente');
+            if(selAdd) selAdd.innerHTML = options;
+            if(selRel) selRel.innerHTML = options;
+        }
+
+        // --- RESUMO FINANCEIRO ---
+        function aplicarFiltro(tipo, botaoClicado) {
+            filtroAtual = tipo;
+            document.querySelectorAll('.btn-filtro').forEach(b => b.classList.remove('ativo'));
+            botaoClicado.classList.add('ativo');
+            carregarResumo(tipo);
+        }
+
+        function formatarDataISO(dataStr) {
+            if (!dataStr) return null;
+            let iso = dataStr;
+            if (dataStr.includes('/')) {
+                const p = dataStr.split('/');
+                iso = `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return { iso: iso, obj: new Date(iso + 'T12:00:00') };
+        }
+
+        function carregarResumo(filtro) {
+            if (!dadosGerais) return;
+            let totalEmprestado = 0, totalAReceber = 0, totalRecebido = 0, lucroEstimado = 0;
+            const hoje = new Date(), mesAtual = hoje.getMonth(), anoAtual = hoje.getFullYear();
+            const inicioSemana = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay());
+            const fimSemana = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay() + 6, 23, 59, 59);
+            const hojeISO = hoje.toISOString().split('T')[0];
+
+            const cardEmprestado = document.getElementById('card-emprestado'), cardLucro = document.getElementById('card-lucro');
+            const lblAReceber = document.getElementById('label-areceber'), lblRecebido = document.getElementById('label-recebido');
+
+            if (filtro === 'tudo') {
+                cardEmprestado.style.display = 'block'; cardLucro.style.display = 'block';
+                lblAReceber.innerText = "A Receber (C/ Juros)"; lblRecebido.innerText = "Já Recebido (Caixa)";
+
+                dadosGerais.clientes.forEach(c => {
+                    if(!c.dividas) return;
+                    c.dividas.forEach(d => {
+                        totalEmprestado += parseFloat(d.valorEmprestado || 0); totalAReceber += parseFloat(d.valorTotal || 0);
+                        if(d.parcelas) d.parcelas.forEach(p => totalRecebido += parseFloat(p.pago || 0));
+                    });
+                });
+                lucroEstimado = totalAReceber - totalEmprestado;
+            } else {
+                cardEmprestado.style.display = 'none'; cardLucro.style.display = 'none';
+                if (filtro === 'mes') { lblAReceber.innerText = "A Receber (Mês)"; lblRecebido.innerText = "Recebido (Mês)"; } 
+                else if (filtro === 'semana') { lblAReceber.innerText = "A Receber (Semana)"; lblRecebido.innerText = "Recebido (Semana)"; } 
+                else if (filtro === 'dia') { lblAReceber.innerText = "A Receber (Hoje)"; lblRecebido.innerText = "Recebido (Hoje)"; }
+
+                dadosGerais.clientes.forEach(c => {
+                    if(!c.dividas) return;
+                    c.dividas.forEach(d => {
+                        if(!d.parcelas) return;
+                        d.parcelas.forEach(p => {
+                            const valParcela = parseFloat(p.valor || 0), valPago = parseFloat(p.pago || 0);
+                            const vencData = formatarDataISO(p.dataVencimento || p.vencimento), pagData = formatarDataISO(p.dataPagamento);
+
+                            if (vencData) {
+                                let soma = false;
+                                if (filtro === 'dia' && vencData.iso === hojeISO) soma = true;
+                                if (filtro === 'mes' && vencData.obj.getMonth() === mesAtual && vencData.obj.getFullYear() === anoAtual) soma = true;
+                                if (filtro === 'semana' && vencData.obj >= inicioSemana && vencData.obj <= fimSemana) soma = true;
+                                if (soma) totalAReceber += valParcela;
+                            }
+
+                            if (pagData && valPago > 0) {
+                                let soma = false;
+                                if (filtro === 'dia' && pagData.iso === hojeISO) soma = true;
+                                if (filtro === 'mes' && pagData.obj.getMonth() === mesAtual && pagData.obj.getFullYear() === anoAtual) soma = true;
+                                if (filtro === 'semana' && pagData.obj >= inicioSemana && pagData.obj <= fimSemana) soma = true;
+                                if (soma) totalRecebido += valPago;
+                            }
+                        });
+                    });
+                });
+            }
+
+            document.getElementById('resumo-emprestado').innerText = totalEmprestado.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+            document.getElementById('resumo-areceber').innerText = totalAReceber.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+            document.getElementById('resumo-recebido').innerText = totalRecebido.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+            const cardLucroValor = document.getElementById('resumo-lucro');
+            cardLucroValor.innerText = lucroEstimado.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+            cardLucroValor.style.color = lucroEstimado < 0 ? 'var(--vermelho-alerta)' : 'var(--verde-lucro)';
+        }
+
+        function carregarProximosVencimentos() {
+            const container = document.getElementById('container-vencimentos');
+            let todasParcelas = [];
+            const hojeISO = new Date().toISOString().split('T')[0];
+
+            dadosGerais.clientes.forEach(c => {
+                if(!c.dividas) return;
+                c.dividas.forEach(d => {
+                    if(!d.parcelas) return;
+                    d.parcelas.forEach(p => {
+                        const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
+                        if (vObj && (parseFloat(p.pago) || 0) < (parseFloat(p.valor) || 0)) {
+                            todasParcelas.push({ cliente: c.nome, divida: d.titulo, valor: p.valor, numero: p.numero, vencimento: vObj.iso, atrasado: vObj.iso < hojeISO });
+                        }
+                    });
+                });
+            });
+
+            todasParcelas.sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+            const top5 = todasParcelas.slice(0, 5);
+
+            container.innerHTML = "";
+            if (top5.length === 0) { container.innerHTML = "<p style='font-size: 0.9rem; color: #64748B; padding: 20px;'>Tudo em dia! Nenhuma cobrança pendente.</p>"; return; }
+
+            top5.forEach(p => {
+                const urlDestino = `detaldiv.html?cliente=${encodeURIComponent(p.cliente)}&divida=${encodeURIComponent(p.divida)}`;
+                const classeAtraso = p.atrasado ? 'atrasado' : '';
+                const dataFormatada = p.vencimento.split('-').reverse().join('/');
+                const textoAtraso = p.atrasado ? '<span class="texto-vencido">(VENCIDO)</span>' : '';
+                const valorF = parseFloat(p.valor).toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+
+                container.innerHTML += `
+                    <a href="${urlDestino}" class="card-vencimento ${classeAtraso}">
+                        <span class="venc-data"><i data-lucide="calendar" size="12"></i> ${dataFormatada} ${textoAtraso}</span>
+                        <div class="venc-nome">${p.cliente}</div>
+                        <div class="venc-footer"><span class="venc-valor">${valorF}</span><span class="venc-parcela">Parc. ${p.numero}</span></div>
+                    </a>`;
+            });
+            lucide.createIcons();
+        }
+
+        // --- SISTEMA DE RELATÓRIOS AVANÇADOS ---
+        function abrirModalRelatorio() { document.getElementById('modalRelatorio').style.display = 'flex'; popularSelectsClientes(); ajustarCamposRelatorio(); }
+        function fecharModalRelatorio() { document.getElementById('modalRelatorio').style.display = 'none'; }
+        
+        function ajustarCamposRelatorio() {
+            const escopo = document.getElementById('rel-escopo').value;
+            document.getElementById('grupo-rel-cliente').style.display = (escopo === 'cliente' || escopo === 'divida') ? 'block' : 'none';
+            document.getElementById('grupo-rel-divida').style.display = (escopo === 'divida') ? 'block' : 'none';
+        }
+
+        function carregarDividasDoClienteRelatorio() {
+            const cliNome = document.getElementById('rel-cliente').value;
+            const selectDiv = document.getElementById('rel-divida');
+            selectDiv.innerHTML = '<option value="">Selecione...</option>';
+            if (!cliNome || !dadosGerais) return;
+            const cliente = dadosGerais.clientes.find(c => c.nome === cliNome);
+            if (cliente && cliente.dividas) {
+                cliente.dividas.forEach(d => selectDiv.innerHTML += `<option value="${d.titulo}">${d.titulo}</option>`);
+            }
+        }
+
+        // Helper para checar se a data entra no filtro do relatório
+        function estaNoPeriodo(dataISO, periodo) {
+            if (periodo === 'tudo') return true;
+            if (!dataISO) return false;
+            const d = new Date(dataISO + 'T12:00:00');
+            const hoje = new Date(), mesAtual = hoje.getMonth(), anoAtual = hoje.getFullYear();
+            if (periodo === 'dia') return dataISO === hoje.toISOString().split('T')[0];
+            if (periodo === 'mes') return d.getMonth() === mesAtual && d.getFullYear() === anoAtual;
+            if (periodo === 'semana') {
+                const dom = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay());
+                const sab = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay() + 6, 23, 59, 59);
+                return d >= dom && d <= sab;
+            }
+            return false;
+        }
+
+        function gerarTextoCabecalho(periodo) {
+            const hoje = new Date();
+            const meses = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
+            if (periodo === 'mes') return `${meses[hoje.getMonth()]}/${hoje.getFullYear()}`;
+            if (periodo === 'dia') return `${hoje.toLocaleDateString('pt-BR')}`;
+            if (periodo === 'semana') {
+                const dom = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay());
+                const sab = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - hoje.getDay() + 6);
+                return `${dom.getDate()} A ${sab.getDate()} DE ${meses[sab.getMonth()]}/${sab.getFullYear()}`;
+            }
+            return "TODO O PERÍODO";
+        }
+
+        function acionarRelatorio(acao) {
+            const periodo = document.getElementById('rel-periodo').value;
+            const escopo = document.getElementById('rel-escopo').value;
+            const cliNome = document.getElementById('rel-cliente').value;
+            const divTitulo = document.getElementById('rel-divida').value;
+
+            if ((escopo === 'cliente' || escopo === 'divida') && !cliNome) return alert("Selecione o Cliente.");
+            if (escopo === 'divida' && !divTitulo) return alert("Selecione a Dívida.");
+
+            const textoPeriodo = gerarTextoCabecalho(periodo);
+            let sumReceber = 0, sumRecebido = 0;
+            let htmlLinhas = "", whatsTexto = "";
+
+            if (escopo === 'geral' || escopo === 'cliente') {
+                // LÓGICA DAS FOTOS 1 e 2
+                whatsTexto += `*RELATÓRIO ${textoPeriodo}*\n`;
+                if(escopo === 'cliente') whatsTexto += `Cliente: ${cliNome}\n`;
+                whatsTexto += `------------------------\n`;
+
+                dadosGerais.clientes.forEach(c => {
+                    if (escopo === 'cliente' && c.nome !== cliNome) return;
+                    if(!c.dividas) return;
+                    
+                    c.dividas.forEach(d => {
+                        if(!d.parcelas) return;
+                        d.parcelas.forEach(p => {
+                            const vencISO = formatarDataISO(p.dataVencimento || p.vencimento)?.iso;
+                            if (estaNoPeriodo(vencISO, periodo)) {
+                                const vParc = parseFloat(p.valor || 0);
+                                const vPago = parseFloat(p.pago || 0);
+                                sumReceber += vParc; sumRecebido += vPago;
+                                
+                                const descParc = p.isQuitacao ? "Parc Quitação" : `Parc ${p.numero}`;
+                                const numF = vParc.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                                const pgoF = vPago.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                                
+                                htmlLinhas += `<tr>
+                                    <td class="col-desc"><b>${c.nome.toUpperCase()}</b> > ${d.titulo} > ${descParc}</td>
+                                    <td class="col-valor">${numF}</td>
+                                    <td class="col-valor">${pgoF}</td>
+                                </tr>`;
+                                
+                                whatsTexto += `👤 *${c.nome}* > ${d.titulo} > ${descParc}\n💰 Rec: ${numF} | ✅ Pago: ${pgoF}\n\n`;
+                            }
+                        });
+                    });
+                });
+
+                const tituloImpresso = escopo === 'geral' ? `RELATÓRIO ${textoPeriodo}` : `RELATÓRIO ${textoPeriodo} (CLIENTE: ${cliNome})`;
+                const classeCor = escopo === 'geral' ? 'print-header-azul' : 'print-header-verde';
+
+                document.getElementById('area-impressao').innerHTML = `
+                    <div class="${classeCor}">${tituloImpresso}</div>
+                    <div class="print-subtotais">
+                        <div class="print-sub-box"><div>Total a receber:</div><span>${sumReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</span></div>
+                        <div class="print-sub-box"><div>Total recebido:</div><span>${sumRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</span></div>
+                    </div>
+                    <table class="print-table"><tbody>${htmlLinhas || '<tr><td colspan="3" align="center">Nenhum dado no período.</td></tr>'}</tbody></table>
+                `;
+
+                whatsTexto = `*RESUMO TOTAIS:*\nEsperado: ${sumReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\nRecebido: ${sumRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\n\n${whatsTexto}`;
+            
+            } else if (escopo === 'divida') {
+                // LÓGICA DA FOTO 3
+                const cliente = dadosGerais.clientes.find(c => c.nome === cliNome);
+                const divida = cliente.dividas.find(d => d.titulo === divTitulo);
+                const dtEmp = divida.data || '---';
+                const td = parseFloat(divida.valorTotal || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                const tp = parseFloat(divida.totalPago || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+
+                whatsTexto += `*RELATÓRIO DE CONTRATO*\n👤 Cliente: ${cliNome}\n📄 Ref: ${divTitulo}\n📅 Data Emp: ${dtEmp}\n\n*Resumo:*\nTotal Dívida: ${td}\nTotal Pago: ${tp}\n------------------------\n`;
+
+                if(divida.parcelas) {
+                    divida.parcelas.forEach(p => {
+                        // NOVIDADE: Usa a função formatarDataISO para garantir que pegue a data certa, não importa como foi salva
+                        const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
+                        const dtFormat = vObj ? vObj.iso.split('-').reverse().join('/') : '---';
+                        
+                        const desc = p.isQuitacao ? `${p.numero}º - Quitação` : `${p.numero}º`;
+                        const vF = parseFloat(p.valor || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                        const pF = parseFloat(p.pago || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                        
+                        htmlLinhas += `<tr><td class="col-valor">${desc}</td><td class="col-valor">${dtFormat}</td><td class="col-valor">${vF}</td><td class="col-valor">${pF}</td></tr>`;
+                        whatsTexto += `Parc ${desc} | Venc: ${dtFormat}\n💰 ${vF} | ✅ ${pF}\n\n`;
+                    });
+                }
+
+                document.getElementById('area-impressao').innerHTML = `
+                    <div class="print-header-preto">RELATÓRIO CLIENTE: ${cliNome.toUpperCase()} > ${divida.titulo.toUpperCase()}</div>
+                    <div class="print-subtotais">
+                        <div class="print-sub-box"><div>Data Empréstimo:</div><span>${dtEmp}</span></div>
+                        <div class="print-sub-box"><div>Total Dívida:</div><span>${td}</span></div>
+                        <div class="print-sub-box"><div>Total Pago:</div><span>${tp}</span></div>
+                    </div>
+                    <table class="print-table">
+                        <thead><tr><th>Parcela</th><th>Vencimento</th><th>Valor Esperado</th><th>Valor Pago</th></tr></thead>
+                        <tbody>${htmlLinhas || '<tr><td colspan="4" align="center">Sem parcelas.</td></tr>'}</tbody>
+                    </table>
+                `;
+            }
+
+            if (acao === 'print') {
+                fecharModalRelatorio();
+                window.print();
+            } else if (acao === 'whatsapp') {
+                const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(whatsTexto)}`;
+                window.open(url, '_blank');
+            }
+        }
+
+        window.onload = iniciarDashboard;
+    </script>
+</body>
+</html>

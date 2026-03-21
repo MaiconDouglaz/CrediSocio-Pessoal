@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes da Dívida</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <style>
+
+        :root { 
+            --primaria: #2E8B57; 
+            --primaria-hover: #246B43;
+            --preto-deep: #0F172A; 
+            --branco: #FFFFFF; 
+            --cinza-fundo: #F8FAFC;
+            --cinza-texto: #64748B;
+            --cinza-borda: #E2E8F0;
+            --verde-claro: #F0FDF4;
+            --roxo-quitacao: #8B5CF6;
+            --roxo-claro: #F5F3FF;
+        }
+
+        body { font-family: 'Inter', sans-serif; background: var(--cinza-fundo); padding: 20px; color: var(--preto-deep); margin: 0; }
+
+        .container { max-width: 500px; margin: 0 auto; padding-bottom: 60px; }
+
+        /* Cabeçalho e Card Resumo */
+
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+
+        .btn-voltar { background: var(--branco); border: none; width: 40px; height: 40px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer; }
+
+        .resumo-card { background: var(--preto-deep); color: var(--branco); padding: 20px; border-radius: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+
+        .resumo-header { margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; }
+
+        .resumo-header span { font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 1px; }
+
+        .resumo-header h3 { margin: 4px 0 0 0; font-size: 1.2rem; color: var(--branco); }
+
+        .resumo-valores { display: flex; justify-content: space-between; }
+
+        .valor-box span { font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; display: block; margin-bottom: 4px; }
+
+        .valor-box strong { font-size: 1.2rem; }
+
+        .valor-box .destaque-verde { color: #4ADE80; }
+
+
+        /* Controles */
+
+        .controles { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+
+        .btn-acao { flex: 1; padding: 12px 8px; border-radius: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-size: 0.85rem; min-width: 100px; }
+
+        .btn-add { background: var(--cinza-borda); color: var(--preto-deep); }
+
+        .btn-add:hover { background: #CBD5E1; }
+
+        .btn-pagamento { background: var(--verde-claro); color: var(--primaria); border: 1px solid #bbf7d0; }
+
+        .btn-pagamento:hover { background: #dcfce7; }
+
+        .btn-salvar { background: var(--primaria); color: white; min-width: 100%; margin-top: 4px; padding: 14px;}
+
+        .btn-salvar:hover { background: var(--primaria-hover); }
+
+        .btn-excluir-parcela {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: #CBD5E1;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-excluir-parcela:hover {
+            color: #EF4444; /* Fica vermelho ao passar o dedo/mouse */
+            background: #FEF2F2;
+        }
+
+
+        /* Lista de Parcelas */
+
+        .titulo-secao { font-size: 0.8rem; font-weight: 700; color: var(--cinza-texto); text-transform: uppercase; margin-bottom: 12px; display: block; }
+
+        .parcela-card { 
+            background: var(--branco); border-radius: 16px; padding: 16px; margin-bottom: 12px; 
+            display: flex; gap: 12px; align-items: flex-start;
+            border-left: 5px solid var(--cinza-borda); box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .status-pago { border-left-color: var(--primaria); background: var(--verde-claro); }
+
+        .status-quitacao { border-left-color: var(--roxo-quitacao); background: var(--roxo-claro); }
+
+        .status-quitacao { 
+            border-left: 6px solid var(--roxo-quitacao) !important; 
+            background: linear-gradient(to right, var(--roxo-claro), var(--branco)) !important;
+            /*border: 2px dashed var(--roxo-quitacao);*/
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.15);
+            transform: scale(1.02); /* Aumenta o card em 2% */
+            margin: 16px 2px; /* Dá um espaço extra em cima e embaixo */
+            position: relative;
+        }
+
+        .aviso-quitacao {
+            grid-column: 1 / -1; 
+            color: var(--roxo-quitacao); 
+            font-size: 0.75rem; 
+            font-weight: 800; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+        
+        .status-atrasado {
+            border-left-color: #EF4444 !important; /* Borda vermelha */
+            background-color: #FEF2F2 !important; /* Fundo avermelhado bem suave */
+        }
+
+        .drag-handle { color: #94A3B8; cursor: grab; margin-top: 10px; }
+
+        .drag-handle:active { cursor: grabbing; }
+
+        .parcela-conteudo { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .input-group label { display: block; font-size: 0.65rem; font-weight: 700; color: var(--cinza-texto); margin-bottom: 4px; text-transform: uppercase; }
+
+        .input-group input { width: 100%; padding: 8px; border: 1px solid var(--cinza-borda); border-radius: 8px; font-size: 0.9rem; box-sizing: border-box; background: white; }
+
+        .badge-status { display: inline-block; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: bold; margin-top: 8px; }
+
+        .badge-data { font-size: 0.65rem; color: var(--cinza-texto); margin-left: 6px; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <button class="btn-voltar" onclick="voltarParaCliente()"><i data-lucide="chevron-left"></i></button>
+            <h2 style="font-size: 1.2rem; margin:0;">Detalhes da Dívida</h2>
+        </header>
+
+        <div class="resumo-card">
+            <div class="resumo-header">
+                <span id="resumo-cliente">CARREGANDO...</span>
+                <h3 id="resumo-titulo">---</h3>
+            </div>
+            <div class="resumo-valores">
+                <div class="valor-box">
+                    <span>Total da Dívida</span>
+                    <strong id="resumo-total">R$ 0,00</strong>
+                </div>
+                <div class="valor-box">
+                    <span>Total Pago</span>
+                    <strong class="destaque-verde" id="resumo-pago">R$ 0,00</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="controles">
+            <button class="btn-acao btn-pagamento" onclick="focarAdicionarPagamento()">
+                <i data-lucide="dollar-sign" size="18"></i> Adicionar Pag.
+            </button>
+            <button class="btn-acao btn-add" onclick="adicionarNovaParcela()">
+                <i data-lucide="plus-circle" size="18"></i> Nova Parcela
+            </button>
+            <button class="btn-acao btn-salvar" onclick="salvarAlteracoes()">
+                <i data-lucide="save" size="18"></i> Salvar Tudo
+            </button>
+        </div>
+
+        <span class="titulo-secao">Ordem das Parcelas (Arraste para mudar)</span>
+        <div id="lista-parcelas"></div>
+    </div>
+
+
+    <script src="banco.js"></script>
+    <script>
+        lucide.createIcons();
+        const params = new URLSearchParams(window.location.search);
+        const nomeClienteURL = params.get('cliente') || '';
+        const tituloDividaURL = params.get('divida') || '';
+        let dividaContexto = null;
+        let clienteContexto = null;
+
+
+        function formatarParaInputDate(dataBR) {
+            if (!dataBR) return '';
+            if (dataBR.includes('-')) return dataBR; 
+            const partes = dataBR.split('/');
+            return `${partes[2]}-${partes[1]}-${partes[0]}`;
+        }
+
+
+        function formatarParaExibicao(dataISO) {
+            if (!dataISO) return '';
+            if (dataISO.includes('/')) return dataISO;
+            const partes = dataISO.split('-');
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+
+
+        function voltarParaCliente() {
+            if (clienteContexto) {
+                window.location.href = `detalc.html?cliente=${encodeURIComponent(clienteContexto.nome)}`;
+            } else {
+                window.history.back();
+            }
+        }
+
+
+        function carregarDetalhes() {
+            const dados = Banco.getDados();
+
+            // Busca robusta ignorando maiúsculas e espaços
+
+            const nomeBuscado = nomeClienteURL.trim().toLowerCase();
+            const tituloBuscado = tituloDividaURL.trim().toLowerCase();
+
+            clienteContexto = dados.clientes.find(c => c.nome.trim().toLowerCase() === nomeBuscado);
+            if (!clienteContexto) {
+                alert('Cliente não encontrado.');
+                return window.history.back();
+            }
+
+            dividaContexto = clienteContexto.dividas.find(d => d.titulo.trim().toLowerCase() === tituloBuscado);
+            if (!dividaContexto) {
+                alert('Dívida não encontrada. Verifique se o título está correto.');
+                return voltarParaCliente();
+            }
+
+            document.getElementById('resumo-cliente').innerText = clienteContexto.nome.toUpperCase();
+            document.getElementById('resumo-titulo').innerText = dividaContexto.titulo.toUpperCase();
+        
+
+            normalizarParcelas();
+
+            atualizarResumoTopo();
+
+            renderizarParcelas();
+            
+
+            new Sortable(document.getElementById('lista-parcelas'), {
+                animation: 150,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost'
+            });
+        }
+
+
+        function normalizarParcelas() {
+            let parcelas = dividaContexto.parcelas || [];
+            const vParcela = dividaContexto.valorParcela || 0;
+            const vQuitacao = dividaContexto.valorQuitacao || 0;
+            const freq = dividaContexto.frequencia || 'Mensal';
+            const dataInicialISO = formatarParaInputDate(dividaContexto.dataVencimento);
+
+            let precisaReconstruir = (parcelas.length === 0) || (vParcela > 0 && Math.abs(parcelas[0].valor - vParcela) > 1);
+            if (precisaReconstruir && dividaContexto.totalParcelas > 0) {
+                let novasParcelas = [];
+                for (let i = 0; i < dividaContexto.totalParcelas; i++) {
+                    let isUltima = (i === dividaContexto.totalParcelas - 1);
+                    let valorDestaParcela = vParcela + (isUltima ? vQuitacao : 0);
+                    
+                    novasParcelas.push({
+                        id: Date.now() + i,
+                        numero: i + 1,
+                        valor: valorDestaParcela,
+                        pago: (parcelas[i] ? parcelas[i].pago : 0),
+                        dataVencimento: calcularProximoVencimento(dataInicialISO, i, freq),
+                        dataPagamento: (parcelas[i] ? parcelas[i].dataPagamento : null),
+                        isQuitacao: (isUltima && vQuitacao > 0)
+                    });
+                }
+
+                dividaContexto.parcelas = novasParcelas;
+            } else {
+                dividaContexto.parcelas.forEach((p, i) => {
+                    p.dataVencimento = formatarParaInputDate(p.dataVencimento || calcularProximoVencimento(dataInicialISO, i, freq));
+                });
+            }
+        }
+
+
+
+        function calcularProximoVencimento(dataBaseISO, indiceMensal, frequencia) {
+            if (!dataBaseISO) return '';
+            let data = new Date(dataBaseISO + 'T12:00:00');
+            if (frequencia === 'Diário') data.setDate(data.getDate() + indiceMensal);
+            else if (frequencia === 'Semanal') data.setDate(data.getDate() + (indiceMensal * 7));
+            else data.setMonth(data.getMonth() + indiceMensal);
+            return data.toISOString().split('T')[0];
+        }
+
+
+        function atualizarResumoTopo() {
+            let totalDiv = 0, totalPg = 0;
+            (dividaContexto.parcelas || []).forEach(p => { totalDiv += p.valor; totalPg += p.pago; });
+            document.getElementById('resumo-total').innerText = totalDiv.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            document.getElementById('resumo-pago').innerText = totalPg.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Função para excluir a parcela individual
+        function excluirParcela(idDaParcela) {
+            if (confirm("Deseja realmente apagar esta parcela?")) {
+                sincronizarDOM(); // Salva qualquer valor que você estava digitando antes de apagar
+                
+                // Filtra removendo apenas a parcela com o ID clicado
+                dividaContexto.parcelas = dividaContexto.parcelas.filter(p => p.id !== idDaParcela);
+                
+                // Renumera as parcelas automaticamente (1, 2, 3...)
+                dividaContexto.parcelas.forEach((p, idx) => {
+                    p.numero = idx + 1;
+                });
+                
+                dividaContexto.totalParcelas = dividaContexto.parcelas.length;
+                
+                // Atualiza a tela
+                renderizarParcelas();
+                atualizarResumoTopo();
+                
+                // Nota: O usuário ainda precisa clicar em "Salvar Tudo" para efetivar no banco!
+            }
+        }
+
+
+        function renderizarParcelas() {
+            const container = document.getElementById('lista-parcelas');
+            container.innerHTML = '';
+            const vQuitacaoGlobal = parseFloat(dividaContexto.valorQuitacao) || 0;
+            
+            // CORREÇÃO DO FUSO HORÁRIO: Pega a data local correta
+            const dataAtual = new Date();
+            const hojeISO = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}-${String(dataAtual.getDate()).padStart(2, '0')}`;
+            
+            dividaContexto.parcelas.forEach((p, index) => {
+                const isPago = (p.pago >= p.valor) && (p.valor > 0);
+                const isUltimaParcela = (index === dividaContexto.parcelas.length - 1);
+                if (isUltimaParcela && vQuitacaoGlobal > 0) {
+                    p.isQuitacao = true; 
+                }
+
+                const isAtrasado = !isPago && p.dataVencimento && (p.dataVencimento < hojeISO);
+
+                let classeCard = '';
+                let badgeHtml = `<span class="badge-status" style="background:#F1F5F9; color:#64748B;">PENDENTE</span>`;
+                let cabecalhoQuitacao = '';
+
+                if (p.isQuitacao) {
+                    classeCard = 'status-quitacao';
+                    cabecalhoQuitacao = `<div class="aviso-quitacao"><i size="16"></i> </div>`;
+                    badgeHtml = `<span class="badge-status" style="background:#8B5CF6; color:white;"> PARCELA DE QUITAÇÃO</span>`;
+                }
+
+                if (isPago) {
+                    classeCard += p.isQuitacao ? ' status-pago' : 'status-pago';
+                    let dataText = p.dataPagamento ? `em ${formatarParaExibicao(p.dataPagamento)}` : 'recentemente';
+                    badgeHtml = `
+                        <span class="badge-status" style="background:#2E8B57; color:white;">PAGO</span>
+                        <span class="badge-data">${dataText}</span>`;
+                } else if (isAtrasado) {
+                    classeCard += ' status-atrasado';
+                    badgeHtml = `<span class="badge-status" style="background:#EF4444; color:white;">VENCIDA</span>`;
+                }
+
+                const cardHTML = `
+                    <div class="parcela-card ${classeCard}" id="card-${p.id}">
+                        <button class="btn-excluir-parcela" onclick="excluirParcela(${p.id})" title="Excluir parcela">
+                            <i data-lucide="trash-2" size="18"></i>
+                        </button>
+                        <div class="drag-handle"><i data-lucide="grip-vertical"></i></div>
+                        <div class="parcela-conteudo">
+                            ${cabecalhoQuitacao} 
+                            
+                            <div class="input-group">
+                                <label>Nº Parcela</label>
+                                <input type="number" class="input-num" value="${p.numero}">
+                            </div>
+                            <div class="input-group">
+                                <label>Valor (R$)</label>
+                                <input type="number" step="0.01" class="input-valor" value="${p.valor.toFixed(2)}">
+                            </div>
+                            <div class="input-group">
+                                <label>Vencimento</label>
+                                <input type="date" class="input-vencimento" value="${p.dataVencimento}">
+                            </div>
+                            <div class="input-group">
+                                <label>Pago (R$)</label>
+                                <input type="number" step="0.01" class="input-pago" value="${p.pago.toFixed(2)}">
+                            </div>
+                            <div style="grid-column: 1 / -1; margin-top: -5px;">
+                                ${badgeHtml}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHTML);
+            });
+            lucide.createIcons();
+        }
+
+
+
+        // NOVIDADE: Foca inteligentemente no campo "Pago" da primeira parcela pendente
+
+        function focarAdicionarPagamento() {
+            const inputsPago = document.querySelectorAll('.input-pago');
+            for (let input of inputsPago) {
+                let valParcela = parseFloat(input.closest('.parcela-conteudo').querySelector('.input-valor').value) || 0;
+                let valPago = parseFloat(input.value) || 0;
+                if (valPago < valParcela) {
+                    input.focus();
+                    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+            }
+            alert("Parece que todas as parcelas já estão pagas!");
+        }
+
+
+        // NOVIDADE: Sincroniza a tela com o "cérebro" do app ANTES de fazer qualquer alteração, para não perder edições.
+
+        // NOVIDADE: Sincroniza a tela com o "cérebro" do app e calcula excessos de pagamento
+        
+        function sincronizarDOM() {
+            if (!dividaContexto || !dividaContexto.parcelas) return;
+            const cards = document.querySelectorAll('.parcela-card');
+            
+            // CORREÇÃO DO FUSO HORÁRIO: Pega a data local correta
+            const dataAtual = new Date();
+            const hojeISO = `${dataAtual.getFullYear()}-${String(dataAtual.getMonth() + 1).padStart(2, '0')}-${String(dataAtual.getDate()).padStart(2, '0')}`;
+            
+            let novoTotal = 0;
+            let novoPago = 0;
+            let totalExcesso = 0;
+
+            dividaContexto.parcelas = Array.from(cards).map((card, index) => {
+                let valInput = parseFloat(card.querySelector('.input-valor').value) || 0;
+                let pagoInput = parseFloat(card.querySelector('.input-pago').value) || 0;
+                const vencInput = card.querySelector('.input-vencimento').value;
+                const numInput = parseInt(card.querySelector('.input-num').value) || (index + 1);
+
+                const isUltima = (index === cards.length - 1);
+
+                if (pagoInput > valInput && !isUltima) {
+                    totalExcesso += (pagoInput - valInput);
+                    valInput = pagoInput; 
+                }
+
+                let pAtual = dividaContexto.parcelas[index] || {};
+                let dataPag = pAtual.dataPagamento;
+                
+                if (pagoInput >= valInput && valInput > 0) {
+                    // Agora ele vai salvar o hojeISO corrigido pro fuso local
+                    if (!dataPag) dataPag = hojeISO; 
+                } else {
+                    dataPag = null; 
+                }
+
+                novoTotal += valInput;
+                novoPago += pagoInput;
+
+                return {
+                    id: pAtual.id || Date.now() + index,
+                    numero: numInput,
+                    valor: valInput,
+                    pago: pagoInput,
+                    dataVencimento: vencInput,
+                    dataPagamento: dataPag,
+                    isQuitacao: pAtual.isQuitacao || false
+                };
+            });
+
+            if (totalExcesso > 0 && dividaContexto.parcelas.length > 1) {
+                let ultimaParcela = dividaContexto.parcelas[dividaContexto.parcelas.length - 1];
+                let valorDescontado = Math.min(ultimaParcela.valor, totalExcesso);
+                
+                ultimaParcela.valor -= valorDescontado;
+                novoTotal -= valorDescontado; 
+            }
+
+            dividaContexto.valorTotal = novoTotal;
+        }
+
+
+
+        // NOVIDADE: Lógica inteligente para inserir a parcela ANTES da quitação
+
+        function adicionarNovaParcela() {
+            sincronizarDOM(); // Salva o que você digitou até agora
+
+            const vParcelaBase = dividaContexto.valorParcela || 0;
+            let parcelas = dividaContexto.parcelas;
+
+            // Procura onde está a parcela de quitação
+            let idxQuitacao = parcelas.findIndex(p => p.isQuitacao);
+            if (idxQuitacao === -1) {
+                idxQuitacao = parcelas.length; // Se não achar, joga pro final
+            }
+
+            // NOVIDADE: Guardamos o ID gerado para poder achar o card depois!
+            const idNovaParcela = Date.now();
+
+            const novaParcela = {
+                id: idNovaParcela,
+                numero: 0, 
+                valor: vParcelaBase, 
+                pago: 0,
+                dataVencimento: '', 
+                dataPagamento: null,
+                isQuitacao: false
+            };
+
+            // Insere a nova parcela EXATAMENTE ANTES da quitação
+            parcelas.splice(idxQuitacao, 0, novaParcela);
+
+            // Renumera todas as parcelas em ordem
+            parcelas.forEach((p, idx) => {
+                p.numero = idx + 1;
+            });
+
+            dividaContexto.totalParcelas = parcelas.length; 
+            renderizarParcelas(); // Recarrega a tela com a nova parcela no lugar certo
+
+            // NOVIDADE: Efeito de rolagem e foco!
+            setTimeout(() => {
+                // Procura o card recém-criado pelo ID
+                const cardCriado = document.getElementById(`card-${idNovaParcela}`);
+                
+                if (cardCriado) {
+                    // Acha o input de valor e dá o foco
+                    const inputValor = cardCriado.querySelector('.input-valor');
+                    inputValor.focus();
+                    
+                    // Rola a tela suavemente deixando o card bem no centro
+                    cardCriado.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // BÔNUS: Pisca o fundo de verde clarinho rapidinho para chamar a atenção
+                    cardCriado.style.transition = "background-color 0.4s";
+                    cardCriado.style.backgroundColor = "#dcfce7"; 
+                    setTimeout(() => { cardCriado.style.backgroundColor = ""; }, 600);
+                }
+            }, 100); // Espera 100 milissegundos para o HTML terminar de carregar na tela
+        }
+
+
+
+        function salvarAlteracoes() {
+
+            sincronizarDOM(); // Salva os campos da tela pro objeto
+        
+
+            // Usa os dados corretos que não dependem da URL para salvar (evita bugs de nome/título)
+
+            if (Banco.atualizarDivida(clienteContexto.nome, dividaContexto.titulo, dividaContexto)) {
+                atualizarResumoTopo();
+                renderizarParcelas(); 
+                alert('Alterações e pagamentos salvos com sucesso!');
+            } else {
+                alert('Erro ao salvar no banco de dados.');
+            }
+        }
+
+        // Inicia
+
+        carregarDetalhes();
+
+    </script>
+</body>
+</html>

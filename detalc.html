@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhes do Cliente - CrediSócio</title>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon.png">
+    <style>
+        :root {
+            --primaria: #2E8B57;
+            --preto-deep: #0F172A;
+            --cinza-texto: #64748B;
+            --branco: #FFFFFF;
+            --fundo-gradiente: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 100%);
+            --alerta: #FF9500;
+            --vermelho: #EF4444;
+        }
+        body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(--fundo-gradiente); color: var(--preto-deep); display: flex; justify-content: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 400px; padding: 24px; box-sizing: border-box; padding-bottom: 100px; }
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 25px; }
+        .btn-voltar { background: var(--branco); border: none; width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); cursor: pointer; }
+        
+        .resumo-topo { background: var(--preto-deep); color: var(--branco); padding: 24px; border-radius: 24px; margin-bottom: 30px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .stat-item span { font-size: 0.75rem; opacity: 0.7; text-transform: uppercase; }
+        .stat-item b { display: block; font-size: 1.1rem; margin-top: 4px; }
+        
+        .card-divida { background: var(--branco); padding: 20px; border-radius: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05); cursor: pointer; position: relative; }
+        .divida-header { font-weight: 800; color: var(--preto-deep); font-size: 1rem; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; }
+        
+        /* Layout do Card ajustado para 6 informações (3 linhas x 2 colunas) */
+        .divida-info { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: center; }
+        .valor-principal { color: var(--primaria); font-weight: 800; font-size: 1.1rem; }
+        .label-pequena { display: block; font-size: 0.65rem; color: var(--cinza-texto); text-transform: uppercase; margin-bottom: 2px; font-weight: 600; }
+        .divida-info b { font-size: 0.95rem; color: var(--preto-deep); }
+        
+        .btn-adicionar-divida { position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: var(--primaria); color: var(--branco); border-radius: 50%; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; box-shadow: 0 10px 15px -3px rgba(46, 139, 87, 0.4); }
+        
+        /* Modais */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); align-items: flex-end; justify-content: center; z-index: 100; }
+        .menu-opcoes { background: var(--branco); width: 100%; max-width: 400px; border-radius: 24px 24px 0 0; padding: 24px; }
+        .opcao-item { display: flex; align-items: center; gap: 15px; padding: 18px; width: 100%; border: none; background: none; font-size: 1rem; font-weight: 600; color: var(--preto-deep); cursor: pointer; border-bottom: 1px solid #f1f5f9; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <button class="btn-voltar" onclick="window.location.href='Lista_clientes.html'"><i data-lucide="chevron-left"></i></button>
+            <h2>Perfil Financeiro</h2>
+        </header>
+
+        <div class="resumo-topo">
+            <h2 id="nome-cliente" style="margin-top:0;">...</h2>
+            <div class="stats-grid">
+                <div class="stat-item"><span>Contrato Total</span><b id="total-dividas">R$ 0,00</b></div>
+                <div class="stat-item"><span>Falta Receber</span><b id="total-pendente" style="color: var(--alerta);">R$ 0,00</b></div>
+            </div>
+        </div>
+
+        <h3 style="font-size: 1rem; color: var(--cinza-texto);">Dívidas Ativas</h3>
+        <div id="container-dividas"></div>
+
+        <button class="btn-adicionar-divida" onclick="irParaCadastro()"><i data-lucide="plus"></i></button>
+    </div>
+
+    <div class="overlay" id="overlayOpcoes" onclick="fecharOpcoes()">
+        <div class="menu-opcoes" onclick="event.stopPropagation()">
+            <button class="opcao-item" onclick="irParaDetalhesDivida()"><i data-lucide="eye"></i> Ver Detalhes / Parcelas</button>
+            <button class="opcao-item" style="color: var(--vermelho); border-bottom: none;" onclick="excluirDivida()"><i data-lucide="trash-2"></i> Apagar Dívida</button>
+        </div>
+    </div>
+
+    <script src="banco.js"></script>
+    <script>
+        lucide.createIcons();
+        let tituloDividaSelecionada = "";
+        
+        // Pega o nome do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const nomeClienteURL = decodeURIComponent(urlParams.get('cliente') || "");
+
+        function carregarPerfil() {
+            const dados = Banco.getDados();
+            const cliente = dados.clientes.find(c => c.nome.trim().toLowerCase() === nomeClienteURL.trim().toLowerCase());
+            const container = document.getElementById('container-dividas');
+            
+            document.getElementById('nome-cliente').innerText = cliente ? cliente.nome.toUpperCase() : nomeClienteURL.toUpperCase();
+            container.innerHTML = "";
+
+            if (cliente && cliente.dividas && cliente.dividas.length > 0) {
+                let sTotalGeral = 0;
+                let sTotalPagoGeral = 0;
+
+                cliente.dividas.forEach(d => {
+                    const valorTotal = parseFloat(d.valorTotal) || 0;
+                    
+                    let totalPago = 0;
+                    let pagasCount = 0;
+                    let valorProximaParcela = 0;
+
+                    if (d.parcelas && d.parcelas.length > 0) {
+                        totalPago = d.parcelas.reduce((acc, p) => acc + (parseFloat(p.pago) || 0), 0);
+                        pagasCount = d.parcelas.filter(p => parseFloat(p.pago) >= parseFloat(p.valor) && parseFloat(p.valor) > 0).length;
+                        
+                        // Busca a primeira parcela que o valor pago é menor que o valor total da parcela
+                        let proxima = d.parcelas.find(p => (parseFloat(p.pago) || 0) < (parseFloat(p.valor) || 0));
+                        
+                        if (proxima) {
+                            valorProximaParcela = parseFloat(proxima.valor) || 0;
+                        } else {
+                            // Se todas estiverem pagas, mostra o valor da última parcela como referência
+                            valorProximaParcela = parseFloat(d.parcelas[d.parcelas.length - 1].valor) || 0;
+                        }
+                    } else {
+                        // Fallback para dívidas antigas
+                        totalPago = parseFloat(d.totalPago) || 0;
+                        pagasCount = d.pagas || 0;
+                        valorProximaParcela = d.valorParcela || (valorTotal / (d.totalParcelas || 1));
+                    }
+
+                    let saldoRestante = valorTotal - totalPago;
+                    if (saldoRestante < 0) saldoRestante = 0; 
+
+                    sTotalGeral += valorTotal;
+                    sTotalPagoGeral += totalPago;
+
+                    const frequenciaExibicao = d.frequencia ? d.frequencia.toUpperCase() : 'MENSAL';
+                    const dataExibicao = d.data || 'Não informada';
+
+                    container.innerHTML += `
+                        <div class="card-divida" onclick="abrirOpcoes('${d.titulo}')">
+                            <div class="divida-header">${d.titulo}</div>
+                            <div class="divida-info">
+                                <div>
+                                    <span class="label-pequena">Valor Total</span>
+                                    <div class="valor-principal">R$ ${valorTotal.toFixed(2).replace('.',',')}</div>
+                                </div>
+                                <div>
+                                    <span class="label-pequena">Restante</span>
+                                    <b style="color:${saldoRestante <= 0 ? '#10B981' : '#FF9500'}">R$ ${saldoRestante.toFixed(2).replace('.',',')}</b>
+                                </div>
+                                <div>
+                                    <span class="label-pequena">Parcelas Pagas</span>
+                                    <b>${pagasCount}/${d.totalParcelas || 1}</b>
+                                </div>
+                                <div>
+                                    <span class="label-pequena">Valor da Parcela</span>
+                                    <b>R$ ${valorProximaParcela.toFixed(2).replace('.',',')}</b>
+                                </div>
+                                <div>
+                                    <span class="label-pequena">Frequência</span>
+                                    <b style="font-size: 0.85rem;">${frequenciaExibicao}</b>
+                                </div>
+                                <div>
+                                    <span class="label-pequena">Data de Criação</span>
+                                    <b style="font-size: 0.85rem;">${dataExibicao}</b>
+                                </div>
+                            </div>
+                        </div>`;
+                });
+
+                document.getElementById('total-dividas').innerText = sTotalGeral.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+                
+                let faltaReceberFinal = sTotalGeral - sTotalPagoGeral;
+                if (faltaReceberFinal < 0) faltaReceberFinal = 0;
+                document.getElementById('total-pendente').innerText = faltaReceberFinal.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            } else {
+                container.innerHTML = "<p style='text-align:center; color:gray; font-size: 0.9rem; margin-top: 20px;'>Nenhuma dívida cadastrada para este cliente.</p>";
+            }
+            lucide.createIcons();
+        }
+
+        function abrirOpcoes(t) { 
+            tituloDividaSelecionada = t; 
+            document.getElementById('overlayOpcoes').style.display = 'flex'; 
+        }
+
+        function fecharOpcoes() { document.getElementById('overlayOpcoes').style.display = 'none'; }
+
+        function excluirDivida() {
+            if(confirm("Tem certeza que deseja apagar esta dívida permanentemente?")) {
+                let d = Banco.getDados();
+                let c = d.clientes.find(c => c.nome.trim().toLowerCase() === nomeClienteURL.trim().toLowerCase());
+                
+                if(c) {
+                    c.dividas = c.dividas.filter(div => div.titulo !== tituloDividaSelecionada);
+                    Banco.salvarDados(d);
+                    fecharOpcoes();
+                    carregarPerfil(); 
+                }
+            }
+        }
+
+        function irParaCadastro() { window.location.href = `novadiv.html?cliente=${encodeURIComponent(nomeClienteURL)}`; }
+        function irParaDetalhesDivida() {
+            if (!tituloDividaSelecionada) {
+                alert("Erro: Dívida não selecionada corretamente.");
+                return;
+            }
+            // Encode simples para garantir que espaços e acentos não quebrem a URL
+            const url = `detaldiv.html?cliente=${encodeURIComponent(nomeClienteURL)}&divida=${encodeURIComponent(tituloDividaSelecionada)}`;
+            window.location.href = url;
+        }
+
+        carregarPerfil();
+    </script>
+</body>
+</html>
