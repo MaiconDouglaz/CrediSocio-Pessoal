@@ -117,7 +117,23 @@
             .print-table td.col-desc { font-weight: bold; text-align: left; }
             .print-table td.col-valor { text-align: center; }
             .print-table tr:nth-child(even) { background-color: #FAFAFA !important; }
-        }
+         }
+         
+        /* --- ESTILOS DO RELATÓRIO NA TELA --- */
+        .btn-tela { background: #3B82F6; color: white; } 
+        .btn-tela:hover { background: #2563EB; }
+
+        .tabela-tela { width: 100%; border-collapse: collapse; font-size: 0.65rem; text-align: center; font-family: 'Inter', sans-serif; table-layout: fixed; }
+        .tabela-tela td { border: 1px solid #94A3B8; padding: 6px 2px; word-wrap: break-word; }
+        
+        .tabela-tela .header-preto { background: #000000; color: #FFD700; text-transform: uppercase; font-weight: 800; font-size: 0.85rem; padding: 10px; }
+        .tabela-tela .header-cinza { background: #808080; color: #FFFFFF; font-weight: bold; padding: 6px 2px; font-size: 0.65rem; }
+        .tabela-tela .header-cinza span { font-size: 0.85rem; }
+        
+        .tabela-tela .col-left-mes { background: #808080; color: #FFFFFF; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: bold; font-size: 0.75rem; padding: 0; }
+        .tabela-tela .col-titulos td { background: #E2E8F0; font-weight: bold; padding: 4px 2px; }
+        
+        .tabela-tela tr:nth-child(even) { background: #F8FAFC; }
     </style>
 </head>
 <body>
@@ -250,6 +266,19 @@
 
             <button class="btn-acao-modal" onclick="acionarRelatorio('print')"><i data-lucide="printer"></i> Imprimir / Salvar PDF</button>
             <button class="btn-acao-modal btn-whats" onclick="acionarRelatorio('whatsapp')"><i data-lucide="send"></i> Enviar Resumo no WhatsApp</button>
+            <button class="btn-acao-modal btn-tela" onclick="mostrarRelatorioTela()"><i data-lucide="monitor"></i> Mostrar na Tela (Este Mês)</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="modalRelatorioTela" onclick="fecharModalRelatorioTela()">
+        <div class="modal" onclick="event.stopPropagation()" style="max-width: 95vw; padding: 16px; border-radius: 16px;">
+            <div class="modal-header" style="margin-bottom: 12px;">
+                <h3 style="font-size: 1.1rem;">Relatório do Mês</h3>
+                <button class="btn-fechar" onclick="fecharModalRelatorioTela()"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div id="conteudo-relatorio-tela" style="overflow-x: auto; border-radius: 8px; border: 1px solid #94A3B8;">
+                </div>
         </div>
     </div>
 
@@ -576,6 +605,103 @@
         }
 
         window.onload = iniciarDashboard;
+
+        // --- SISTEMA DE RELATÓRIO NA TELA (MÊS ATUAL) ---
+        function fecharModalRelatorioTela() {
+            document.getElementById('modalRelatorioTela').style.display = 'none';
+        }
+
+        function mostrarRelatorioTela() {
+            // Fecha o modal antigo e abre o novo
+            fecharModalRelatorio();
+            document.getElementById('modalRelatorioTela').style.display = 'flex';
+
+            const dadosRel = Banco.getDados();
+            let parcelasMes = [];
+            let totalReceber = 0, totalRecebido = 0;
+            const hoje = new Date(), mesAtual = hoje.getMonth(), anoAtual = hoje.getFullYear();
+
+            // Extrair e filtrar apenas parcelas deste mês
+            (dadosRel.clientes || []).forEach(c => {
+                (c.dividas || []).forEach(d => {
+                    (d.parcelas || []).forEach(p => {
+                        const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
+                        
+                        if (vObj && vObj.obj.getMonth() === mesAtual && vObj.obj.getFullYear() === anoAtual) {
+                            const valParcela = parseFloat(p.valor || 0);
+                            const valPago = parseFloat(p.pago || 0);
+                            
+                            totalReceber += valParcela; 
+                            totalRecebido += valPago;
+
+                            parcelasMes.push({
+                                cliente: c.nome,
+                                frequencia: d.frequencia || 'Mensal', 
+                                vencimentoISO: vObj.iso,
+                                vencimentoFormatado: vObj.iso.split('-').reverse().join('/'),
+                                valor: valParcela,
+                                pago: valPago
+                            });
+                        }
+                    });
+                });
+            });
+
+            // ORDENAR por data
+            parcelasMes.sort((a, b) => a.vencimentoISO.localeCompare(b.vencimentoISO));
+
+            // Montar as linhas (Abreviadas para caber perfeito no celular)
+            let linhasHTML = "";
+            parcelasMes.forEach(p => {
+                let freqCurta = p.frequencia.substring(0,3) + "."; // Ex: Mensal -> Men.
+                let vencCurto = p.vencimentoFormatado.substring(0,5); // Ex: 15/03/2026 -> 15/03
+
+                linhasHTML += `
+                    <tr>
+                        <td style="text-align: left; padding-left: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${p.cliente}</td>
+                        <td>${freqCurta}</td>
+                        <td>${vencCurto}</td>
+                        <td>${p.valor.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</td>
+                        <td>${p.pago.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</td>
+                    </tr>
+                `;
+            });
+
+            if(parcelasMes.length === 0) {
+                linhasHTML = `<tr><td colspan="5" style="padding: 20px; text-align: center; color: #64748B;">Nenhuma parcela encontrada.</td></tr>`;
+            }
+
+            const numLinhas = parcelasMes.length > 0 ? parcelasMes.length : 1;
+            const rowspanTotal = numLinhas + 2; 
+
+            // Montar Tabela Final com % exata para cada coluna
+            const htmlFinal = `
+                <table class="tabela-tela">
+                    <colgroup>
+                        <col style="width: 6%;">  <col style="width: 28%;"> <col style="width: 12%;"> <col style="width: 14%;"> <col style="width: 20%;"> <col style="width: 20%;"> </colgroup>
+                    <tbody>
+                        <tr>
+                            <td colspan="6" class="header-preto">RELATÓRIO FINANCEIRO</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="${rowspanTotal}" class="col-left-mes">Este mês</td>
+                            <td colspan="3" class="header-cinza">Total a Receber:<br><span>${totalReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</span></td>
+                            <td colspan="2" class="header-cinza">Total Recebido:<br><span>${totalRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}</span></td>
+                        </tr>
+                        <tr class="col-titulos">
+                            <td>Cliente</td>
+                            <td>Freq.</td>
+                            <td>Venc.</td>
+                            <td>A Receber</td>
+                            <td>Recebido</td>
+                        </tr>
+                        ${linhasHTML}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('conteudo-relatorio-tela').innerHTML = htmlFinal;
+        }
     </script>
 </body>
 </html>
