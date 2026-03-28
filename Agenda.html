@@ -407,25 +407,20 @@
                     if (!divida.parcelas) return;
                     
                     divida.parcelas.forEach(parcela => {
-                        // AQUI ESTÁ A CORREÇÃO: Lê os dois formatos de nome possíveis no seu banco
                         const dataVenc = parcela.dataVencimento || parcela.vencimento;
                         
                         if (!dataVenc || dataVenc.trim() === "") return; 
 
-                        // Garante que a data sempre fique no formato do calendário (YYYY-MM-DD), 
-                        // mesmo se o banco tiver salvo como DD/MM/YYYY
                         let dataISO = dataVenc;
                         if (dataVenc.includes('/')) {
                             const partes = dataVenc.split('/');
                             dataISO = `${partes[2]}-${partes[1]}-${partes[0]}`;
                         }
                         
-                        // Inicializa o array para esta data se não existir
                         if (!parcelasMapeadas[dataISO]) {
                             parcelasMapeadas[dataISO] = [];
                         }
                         
-                        // Define o Status
                         let statusCalculado = "Pendente";
                         if (parcela.pago >= parcela.valor && parcela.valor > 0) {
                             statusCalculado = "Recebido";
@@ -433,7 +428,6 @@
                             statusCalculado = "Vencida";
                         }
 
-                        // Guarda a parcela no dia correto
                         parcelasMapeadas[dataISO].push({
                             clienteNome: cliente.nome,
                             dividaTitulo: divida.titulo,
@@ -459,17 +453,13 @@
             const grade = document.getElementById('grade-dias');
             grade.innerHTML = "";
 
-            // Descobre em qual dia da semana cai o dia 1 (0=Dom, 1=Seg...)
             const primeiroDia = new Date(ano, mes, 1).getDay();
-            // Descobre quantos dias tem no mês
             const diasNoMes = new Date(ano, mes + 1, 0).getDate();
 
-            // Cria os espaços vazios antes do dia 1
             for (let i = 0; i < primeiroDia; i++) {
                 grade.innerHTML += `<div class="dia dia-vazio"></div>`;
             }
 
-            // Cria os dias do mês
             for (let i = 1; i <= diasNoMes; i++) {
                 const dataKey = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 const divDia = document.createElement('div');
@@ -480,7 +470,6 @@
                     divDia.classList.add('hoje');
                 }
 
-                // Verifica se tem parcelas neste dia no nosso banco mapeado
                 if (parcelasMapeadas[dataKey] && parcelasMapeadas[dataKey].length > 0) {
                     divDia.classList.add('com-divida');
                     
@@ -491,7 +480,6 @@
                     
                     divDia.onclick = () => mostrarCards(dataKey);
                 } else {
-                    // Clicar num dia vazio limpa a lista
                     divDia.onclick = () => {
                         document.getElementById('titulo-lista').innerText = `Sem agendamentos em ${i}/${mes+1}`;
                         document.getElementById('lista-cards').innerHTML = '<p style="text-align: center; color: #94A3B8; font-size: 0.9rem; margin-top: 20px;">Dia livre! Nenhuma cobrança pendente.</p>';
@@ -506,7 +494,6 @@
         function mudarMes(direcao) {
             dataAtual.setMonth(dataAtual.getMonth() + direcao);
             renderizarCalendario();
-            // Limpa a lista ao mudar o mês
             document.getElementById('lista-cards').innerHTML = '<p style="text-align: center; color: #94A3B8; font-size: 0.9rem; margin-top: 20px;">Selecione um dia no calendário para ver os detalhes.</p>';
             document.getElementById('titulo-lista').innerText = "Parcelas do Dia";
         }
@@ -516,7 +503,6 @@
             const container = document.getElementById('lista-cards');
             const lista = parcelasMapeadas[data];
             
-            // Formata a data para exibir bonito (ex: 20/03/2026)
             const dataExibicao = data.split('-').reverse().join('/');
             document.getElementById('titulo-lista').innerText = `Cobranças: ${dataExibicao}`;
 
@@ -526,7 +512,6 @@
                 let borderClass = "";
                 let badgeClass = "";
                 
-                // Define as cores baseadas no status que calculamos
                 if (item.status === 'Recebido') {
                     borderClass = 'status-recebido';
                     badgeClass = 'badge-recebido';
@@ -565,10 +550,6 @@
         renderizarCalendario();
         lucide.createIcons();
 
-        // Se quiser que o dia de "hoje" já abra automático, descomente a linha abaixo:
-        // const hojeStr = new Date().toISOString().split('T')[0];
-        // if(parcelasMapeadas[hojeStr]) mostrarCards(hojeStr);
-
         // --- FUNÇÕES DO MENU E MODAIS ---
         function abrirModalAdicionar() {
             document.getElementById('modalAdicionar').style.display = 'flex';
@@ -603,7 +584,6 @@
             if(selRel) selRel.innerHTML = options;
         }
 
-        // Função para carregar clientes apenas no botão + Ações (Nova Dívida)
         function popularSelectClientesMenu() {
             const dadosMenu = Banco.getDados(); 
             const selectAdd = document.getElementById('select-cliente-nova-divida');
@@ -738,7 +718,16 @@
                 const divida = cliente.dividas.find(d => d.titulo === divTitulo);
                 const dtEmp = divida.data || '---';
                 const td = parseFloat(divida.valorTotal || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
-                const tp = parseFloat(divida.totalPago || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                
+                // --- A MATEMÁTICA CORRETA: Somar o valor pago de todas as parcelas na hora ---
+                let somaTotalPagoDaDivida = 0;
+                if(divida.parcelas) {
+                    divida.parcelas.forEach(p => {
+                        somaTotalPagoDaDivida += parseFloat(p.pago || 0);
+                    });
+                }
+                const tp = somaTotalPagoDaDivida.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                // ------------------------------------------------------------------------
 
                 whatsTexto += `*RELATÓRIO DE CONTRATO*\n👤 Cliente: ${cliNome}\n📄 Ref: ${divTitulo}\n📅 Data Emp: ${dtEmp}\n\n*Resumo:*\nTotal Dívida: ${td}\nTotal Pago: ${tp}\n------------------------\n`;
 
@@ -797,7 +786,6 @@
             (dadosRel.clientes || []).forEach(c => {
                 (c.dividas || []).forEach(d => {
                     (d.parcelas || []).forEach(p => {
-                        // Nas páginas Cadastros e Agenda, a função correta é essa abaixo:
                         const vObj = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento);
                         
                         if (vObj && vObj.obj.getMonth() === mesAtual && vObj.obj.getFullYear() === anoAtual) {
