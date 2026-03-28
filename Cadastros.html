@@ -395,7 +395,6 @@
         }
 
         function acionarRelatorio(acao) {
-            const dadosRel = Banco.getDados();
             const periodo = document.getElementById('rel-periodo').value;
             const escopo = document.getElementById('rel-escopo').value;
             const cliNome = document.getElementById('rel-cliente').value;
@@ -413,14 +412,14 @@
                 if(escopo === 'cliente') whatsTexto += `Cliente: ${cliNome}\n`;
                 whatsTexto += `------------------------\n`;
 
-                dadosRel.clientes.forEach(c => {
+                dadosGerais.clientes.forEach(c => {
                     if (escopo === 'cliente' && c.nome !== cliNome) return;
                     if(!c.dividas) return;
                     
                     c.dividas.forEach(d => {
                         if(!d.parcelas) return;
                         d.parcelas.forEach(p => {
-                            const vencISO = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento)?.iso;
+                            const vencISO = formatarDataISO(p.dataVencimento || p.vencimento)?.iso;
                             if (estaNoPeriodo(vencISO, periodo)) {
                                 const vParc = parseFloat(p.valor || 0);
                                 const vPago = parseFloat(p.pago || 0);
@@ -457,17 +456,26 @@
                 whatsTexto = `*RESUMO TOTAIS:*\nEsperado: ${sumReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\nRecebido: ${sumRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\n\n${whatsTexto}`;
             
             } else if (escopo === 'divida') {
-                const cliente = dadosRel.clientes.find(c => c.nome === cliNome);
+                const cliente = dadosGerais.clientes.find(c => c.nome === cliNome);
                 const divida = cliente.dividas.find(d => d.titulo === divTitulo);
                 const dtEmp = divida.data || '---';
                 const td = parseFloat(divida.valorTotal || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
-                const tp = parseFloat(divida.totalPago || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                
+                // --- CORREÇÃO AQUI: Somar o valor pago de todas as parcelas na hora ---
+                let somaTotalPagoDaDivida = 0;
+                if(divida.parcelas) {
+                    divida.parcelas.forEach(p => {
+                        somaTotalPagoDaDivida += parseFloat(p.pago || 0);
+                    });
+                }
+                const tp = somaTotalPagoDaDivida.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                // ------------------------------------------------------------------------
 
                 whatsTexto += `*RELATÓRIO DE CONTRATO*\n👤 Cliente: ${cliNome}\n📄 Ref: ${divTitulo}\n📅 Data Emp: ${dtEmp}\n\n*Resumo:*\nTotal Dívida: ${td}\nTotal Pago: ${tp}\n------------------------\n`;
 
                 if(divida.parcelas) {
                     divida.parcelas.forEach(p => {
-                        const vObj = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento);
+                        const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
                         const dtFormat = vObj ? vObj.iso.split('-').reverse().join('/') : '---';
                         
                         const desc = p.isQuitacao ? `${p.numero}º - Quitação` : `${p.numero}º`;
