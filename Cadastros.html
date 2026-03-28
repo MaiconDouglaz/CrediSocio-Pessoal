@@ -34,7 +34,7 @@
             display: flex;
             justify-content: center;
             min-height: 100vh;
-            padding-bottom: 100px; /* Impede que o conteúdo fique atrás do menu */
+            padding-bottom: 100px; 
         }
 
         .container {
@@ -232,6 +232,30 @@
         <div class="nav-item" onclick="abrirModalRelatorio()"><i data-lucide="file-text"></i>Relatórios</div>
     </nav>
 
+    <div class="overlay" id="modalAdicionar" onclick="fecharModalAdicionar()">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h3>O que deseja fazer?</h3>
+                <button class="btn-fechar" onclick="fecharModalAdicionar()"><i data-lucide="x"></i></button>
+            </div>
+            <div id="opcoes-adicionar">
+                <button class="btn-acao-modal" style="background: var(--cinza-fundo); color: var(--preto-deep); border: 1px solid var(--cinza-borda);" onclick="window.location.href='Cadastro_form.html'"><i data-lucide="user-plus"></i> Novo Cliente</button>
+                <button class="btn-acao-modal" style="background: var(--cinza-fundo); color: var(--preto-deep); border: 1px solid var(--cinza-borda);" onclick="window.location.href='Lista_clientes.html'"><i data-lucide="users"></i> Lista de Clientes</button>
+                <button class="btn-acao-modal" style="background: var(--primaria); margin-top: 16px;" onclick="mostrarSelectNovaDivida()"><i data-lucide="file-plus"></i> Nova Dívida</button>
+            </div>
+            <div id="selecao-cliente-divida" style="display: none;">
+                <p style="font-size: 0.9rem; color: var(--cinza-texto); margin-top: 0;">Para qual cliente deseja adicionar a dívida?</p>
+                <div class="form-group">
+                    <select id="select-cliente-nova-divida"><option value="">Carregando...</option></select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn-acao-modal" style="background: var(--cinza-borda); color: var(--preto-deep); flex: 1;" onclick="voltarOpcoesAdicionar()">Voltar</button>
+                    <button class="btn-acao-modal" style="background: var(--primaria); flex: 2;" onclick="irParaNovaDivida()">Continuar <i data-lucide="arrow-right"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="overlay" id="modalRelatorio" onclick="fecharModalRelatorio()">
         <div class="modal" onclick="event.stopPropagation()">
             <div class="modal-header">
@@ -395,6 +419,7 @@
         }
 
         function acionarRelatorio(acao) {
+            const dadosRel = Banco.getDados(); // Puxa os dados corretos desta página
             const periodo = document.getElementById('rel-periodo').value;
             const escopo = document.getElementById('rel-escopo').value;
             const cliNome = document.getElementById('rel-cliente').value;
@@ -412,14 +437,15 @@
                 if(escopo === 'cliente') whatsTexto += `Cliente: ${cliNome}\n`;
                 whatsTexto += `------------------------\n`;
 
-                dadosGerais.clientes.forEach(c => {
+                dadosRel.clientes.forEach(c => { // Corrigido para dadosRel
                     if (escopo === 'cliente' && c.nome !== cliNome) return;
                     if(!c.dividas) return;
                     
                     c.dividas.forEach(d => {
                         if(!d.parcelas) return;
                         d.parcelas.forEach(p => {
-                            const vencISO = formatarDataISO(p.dataVencimento || p.vencimento)?.iso;
+                            // Corrigido para puxar a função formatarDataISO_Relatorio
+                            const vencISO = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento)?.iso;
                             if (estaNoPeriodo(vencISO, periodo)) {
                                 const vParc = parseFloat(p.valor || 0);
                                 const vPago = parseFloat(p.pago || 0);
@@ -456,12 +482,12 @@
                 whatsTexto = `*RESUMO TOTAIS:*\nEsperado: ${sumReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\nRecebido: ${sumRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\n\n${whatsTexto}`;
             
             } else if (escopo === 'divida') {
-                const cliente = dadosGerais.clientes.find(c => c.nome === cliNome);
+                const cliente = dadosRel.clientes.find(c => c.nome === cliNome); // Corrigido para dadosRel
                 const divida = cliente.dividas.find(d => d.titulo === divTitulo);
                 const dtEmp = divida.data || '---';
                 const td = parseFloat(divida.valorTotal || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
                 
-                // --- CORREÇÃO AQUI: Somar o valor pago de todas as parcelas na hora ---
+                // --- A MATEMÁTICA CORRETA: Somar o valor pago de todas as parcelas na hora ---
                 let somaTotalPagoDaDivida = 0;
                 if(divida.parcelas) {
                     divida.parcelas.forEach(p => {
@@ -475,7 +501,8 @@
 
                 if(divida.parcelas) {
                     divida.parcelas.forEach(p => {
-                        const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
+                        // Corrigido para puxar a função formatarDataISO_Relatorio
+                        const vObj = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento);
                         const dtFormat = vObj ? vObj.iso.split('-').reverse().join('/') : '---';
                         
                         const desc = p.isQuitacao ? `${p.numero}º - Quitação` : `${p.numero}º`;
@@ -528,7 +555,6 @@
             (dadosRel.clientes || []).forEach(c => {
                 (c.dividas || []).forEach(d => {
                     (d.parcelas || []).forEach(p => {
-                        // Nas páginas Cadastros e Agenda, a função correta é essa abaixo:
                         const vObj = formatarDataISO_Relatorio(p.dataVencimento || p.vencimento);
                         
                         if (vObj && vObj.obj.getMonth() === mesAtual && vObj.obj.getFullYear() === anoAtual) {
@@ -554,7 +580,7 @@
             // ORDENAR por data
             parcelasMes.sort((a, b) => a.vencimentoISO.localeCompare(b.vencimentoISO));
 
-            // Montar as linhas (Abreviadas)
+            // Montar as linhas (Abreviadas para caber perfeito no celular)
             let linhasHTML = "";
             parcelasMes.forEach(p => {
                 let freqCurta = p.frequencia.substring(0,3) + "."; 
@@ -578,17 +604,11 @@
             const numLinhas = parcelasMes.length > 0 ? parcelasMes.length : 1;
             const rowspanTotal = numLinhas + 2; 
 
-            // Montar Tabela Final com larguras exatas
+            // Montar Tabela Final com % exata para cada coluna
             const htmlFinal = `
                 <table class="tabela-tela">
                     <colgroup>
-                        <col style="width: 6%;">  
-                        <col style="width: 28%;"> 
-                        <col style="width: 12%;"> 
-                        <col style="width: 14%;"> 
-                        <col style="width: 20%;"> 
-                        <col style="width: 20%;"> 
-                    </colgroup>
+                        <col style="width: 6%;">  <col style="width: 28%;"> <col style="width: 12%;"> <col style="width: 14%;"> <col style="width: 20%;"> <col style="width: 20%;"> </colgroup>
                     <tbody>
                         <tr>
                             <td colspan="6" class="header-preto">RELATÓRIO FINANCEIRO</td>
