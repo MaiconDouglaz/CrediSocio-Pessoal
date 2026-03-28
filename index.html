@@ -508,7 +508,6 @@
             let htmlLinhas = "", whatsTexto = "";
 
             if (escopo === 'geral' || escopo === 'cliente') {
-                // LÓGICA DAS FOTOS 1 e 2
                 whatsTexto += `*RELATÓRIO ${textoPeriodo}*\n`;
                 if(escopo === 'cliente') whatsTexto += `Cliente: ${cliNome}\n`;
                 whatsTexto += `------------------------\n`;
@@ -557,18 +556,25 @@
                 whatsTexto = `*RESUMO TOTAIS:*\nEsperado: ${sumReceber.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\nRecebido: ${sumRecebido.toLocaleString('pt-BR',{style:'currency', currency:'BRL'})}\n\n${whatsTexto}`;
             
             } else if (escopo === 'divida') {
-                // LÓGICA DA FOTO 3
                 const cliente = dadosGerais.clientes.find(c => c.nome === cliNome);
                 const divida = cliente.dividas.find(d => d.titulo === divTitulo);
                 const dtEmp = divida.data || '---';
                 const td = parseFloat(divida.valorTotal || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
-                const tp = parseFloat(divida.totalPago || 0).toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                
+                // --- CORREÇÃO AQUI: Somar o valor pago de todas as parcelas na hora ---
+                let somaTotalPagoDaDivida = 0;
+                if(divida.parcelas) {
+                    divida.parcelas.forEach(p => {
+                        somaTotalPagoDaDivida += parseFloat(p.pago || 0);
+                    });
+                }
+                const tp = somaTotalPagoDaDivida.toLocaleString('pt-BR',{style:'currency', currency:'BRL'});
+                // ------------------------------------------------------------------------
 
                 whatsTexto += `*RELATÓRIO DE CONTRATO*\n👤 Cliente: ${cliNome}\n📄 Ref: ${divTitulo}\n📅 Data Emp: ${dtEmp}\n\n*Resumo:*\nTotal Dívida: ${td}\nTotal Pago: ${tp}\n------------------------\n`;
 
                 if(divida.parcelas) {
                     divida.parcelas.forEach(p => {
-                        // NOVIDADE: Usa a função formatarDataISO para garantir que pegue a data certa, não importa como foi salva
                         const vObj = formatarDataISO(p.dataVencimento || p.vencimento);
                         const dtFormat = vObj ? vObj.iso.split('-').reverse().join('/') : '---';
                         
